@@ -1,25 +1,33 @@
 #!user/bin/python3
 from git import Repo
-
 from time import sleep as delay
+from json import dump
+
 import os
 import re
 import sys
+import signal
+
 
 DANGEROUS_WORDS = [
-    'credentials', 'credenciales', 'claves', 'seguridad', 'password', 'key', 'keys', 'security'
-    'issue', 'secret'
+                'credentials', 'credenciales', 'claves', 'seguridad',
+                'password', 'key', 'keys', 'security', 'issue', 'secret'
                 ]
 
 
 REPO_DIR = "./skale/skale-manager"
 
-def handler_signal():
+
+def handler_signal(signal, frame):
     print('\n\n [!] Out ........\n')
     sys.exit(1)
 
+
+signal.signal(signal.SIGINT, handler_signal)
+
+
 def limpiar_pantalla():
-  
+
     if os.name == 'nt':
         os.system('cls')
 
@@ -27,14 +35,21 @@ def limpiar_pantalla():
         os.system('clear')
 
 
-def extract(url):
+def extract(url: str):
+    '''
+    Extraemos el repositorio de nuestro directorio
+    '''
     repo = Repo(url)
     return repo
 
-#En la funcion, buscaremos cada palabra clave en cada commit.
-#Si encontramos la palabra, guardamos la version del comit como
-#clave de un diccionario, y el commit junto con el autor en el contenido.
-def transform(repo):
+
+# En la funcion, buscaremos cada palabra clave en cada commit.
+# Si encontramos la palabra, guardamos la version del comit como
+# clave de un diccionario, y el commit junto con el autor en el contenido.
+def transform(repo: Repo):
+    '''
+    Sacamos los commits peligrosos a un diccionario
+    '''
     commits_dictionary = {}
     commits = list(repo.iter_commits())
     total_process = len(commits) * len(DANGEROUS_WORDS)
@@ -42,12 +57,13 @@ def transform(repo):
     loading_bar = '|'
     porcentage = 0
     igual = 1
+
     for commit in commits:
         for word in DANGEROUS_WORDS:
             process += 1
             if re.findall(word, commit.summary, re.I):
                 message = commit.summary + ' by ' + commit.author.name
-                message += '. Word that alerted the system: ' + str(word)  
+                message += '. Word that alerted the system: ' + str(word)
                 commits_dictionary[commit.hexsha] = message
             porcentage = process*100/total_process
             if porcentage >= 5*igual:
@@ -58,13 +74,12 @@ def transform(repo):
                 print(f'{porcentage}%')
                 print(f'Potential leaks found: {len(commits_dictionary)}')
                 delay(0.1)
-                
-            elif  process % 500 == 0:
+
+            elif process % 500 == 0:
                 limpiar_pantalla()
-                print(loading_bar+ ' '*(21 - igual) + '>|', end='')
+                print(loading_bar + ' '*(21 - igual) + '>|', end='')
                 print(f'{porcentage}%')
                 print(f'Potential leaks found: {len(commits_dictionary)}')
-                
 
     limpiar_pantalla()
     loading_bar += '>|'
@@ -72,9 +87,16 @@ def transform(repo):
     print('100% loaded')
     delay(1)
     return commits_dictionary
-                
 
-def load(dictionary):
+
+def load(dictionary: dict):
+    '''
+    Imprimimos por pantalla, a la vez que guardamos el diccionario en un JSON
+    '''
+    archivo = open('leaks.json', 'w')
+    dump(dictionary, archivo)
+    archivo.close()
+
     number = 1
     for key in dictionary:
         print(f'Possible leak nº {number} at commit {key}: {dictionary[key]}')
@@ -87,4 +109,3 @@ if __name__ == '__main__':
     repo = extract(REPO_DIR)
     conflictive_comments = transform(repo)
     load(conflictive_comments)
-    #signal.signal(signal.SIGINT, handler_signal())
