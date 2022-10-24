@@ -12,7 +12,7 @@ DANGEROUS_WORDS = [
                 ]
 
 
-REPO_DIR = "skale/skale-manager"
+REPO_DIR = "./skale/skale-manager"
 
 def handler_signal():
     print('\n\n [!] Out ........\n')
