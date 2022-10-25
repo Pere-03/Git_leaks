@@ -63,8 +63,9 @@ def transform(repo: Repo):
             process += 1
             if re.findall(word, commit.summary, re.I):
                 message = commit.summary + ' by ' + commit.author.name
-                message += '. Word that alerted the system: ' + str(word)
-                commits_dictionary[commit.hexsha] = message
+                message2 = str(word)
+                commits_dictionary[commit.hexsha] = [message, message2]
+
             porcentage = process*100/total_process
             if porcentage >= 5*igual:
                 igual += 1
@@ -93,14 +94,24 @@ def load(dictionary: dict):
     '''
     Imprimimos por pantalla, a la vez que guardamos el diccionario en un JSON
     '''
-    archivo = open('leaks.json', 'w')
-    dump(dictionary, archivo)
-    archivo.close()
+    dicc = {}
 
     number = 1
-    for key in dictionary:
-        print(f'Possible leak nº {number} at commit {key}: {dictionary[key]}')
+    for k in dictionary:
+        dicc['Leak ' + str(number)] = {
+                                'Commit id': k, 'mensaje': dictionary[k][0],
+                                'Dangerous word': dictionary[k][1]
+                                }
+        mensaje = 'Possible leak nº ' + str(number) + ' at commit ' + str(k)
+        mensaje += 'Commit message: ' + dictionary[k][0]
+        mensaje += 'Word that alerted the system: ' + dictionary[k][1]
+        print(mensaje)
         number += 1
+
+    archivo = open('leaks.json', 'w')
+    dump(dicc, archivo)
+    archivo.close()
+
     return
 
 
